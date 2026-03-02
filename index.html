@@ -9,16 +9,17 @@
 <h1>🎮 Multiplayer Guess Game</h1>
 
 <div id="setup">
-    <input type="number" id="players" placeholder="Number of Players">
-    <input type="number" id="secret" placeholder="Enter Secret Number">
+    <input type="number" id="players" placeholder="Number of Players" min="1" required>
+    <input type="number" id="secret" placeholder="Enter Secret Number" required>
     <button onclick="startGame()">Start Game</button>
 </div>
 
 <div id="game" style="display:none;">
     <h2 id="turn"></h2>
-    <input type="number" id="guess" placeholder="Enter your guess">
+    <input type="number" id="guess" placeholder="Enter your guess" required>
     <button onclick="checkGuess()">Submit Guess</button>
     <p id="result"></p>
+    <button onclick="location.reload()">Restart Game</button>
 </div>
 
 <script src="script.js"></script>
