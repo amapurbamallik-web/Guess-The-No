@@ -1,78 +1,118 @@
-/* Custom Styles to supplement Tailwind */
+/* Custom Styles for GuessTheNo - Room Edition */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
 
 :root {
     --p1-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     --p2-gradient: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
-    --bg-dark: #0f172a;
-    --card-dark: #1e293b;
+    --bg-dark: #020617;
+    --card-dark: #0a0e14;
+    --border-slate: #1e293b;
 }
 
 body {
     font-family: 'Plus Jakarta Sans', sans-serif;
-    background-color: #020617;
+    background-color: var(--bg-dark);
     color: #f1f5f9;
     -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
 }
 
 /* 📱 The "Glass" Phone Frame */
 .phone-container {
-    background: #0a0e14;
-    border: 8px solid #1e293b;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 
+    background: var(--card-dark);
+    border: 8px solid var(--border-slate);
+    border-radius: 3rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 
                 inset 0 0 20px rgba(255, 255, 255, 0.02);
+    width: 100%;
+    max-width: 380px;
+    height: 750px;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-/* 💬 Hint Bubbles */
+/* 📋 Setup & Room Tabs */
+.tab-btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+    background: #1e293b;
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+/* 💬 Message History Layout */
+#history {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* 🫧 Bubble Logic */
 .bubble {
     position: relative;
     max-width: 85%;
     padding: 1rem;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s ease;
 }
 
+/* Me (Blue) - Sent to the right */
 .p1-bubble {
     background: var(--p1-gradient);
-    border-radius: 20px 20px 20px 4px;
-    align-self: flex-start;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.p2-bubble {
-    background: var(--p2-gradient);
     border-radius: 20px 20px 4px 20px;
     align-self: flex-end;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* ⚡ Dynamic Animations */
-@keyframes slideIn {
-    from { opacity: 0; transform: translateY(20px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+/* Opponent (Purple) - Kept on the left */
+.p2-bubble {
+    background: var(--p2-gradient);
+    border-radius: 20px 20px 20px 4px;
+    align-self: flex-start;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ⚡ Animations */
+@keyframes slideInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-hint {
-    animation: slideIn 0.4s ease-out forwards;
+    animation: slideInUp 0.3s ease-out forwards;
 }
 
-/* 🎯 Interaction Effects */
+/* 🎯 Input Polish */
 .input-field {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.6) !important;
+    border: 1px solid var(--border-slate) !important;
+    border-radius: 1rem;
+    color: white;
     transition: all 0.2s ease;
 }
 
 .input-field:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    border-color: #3b82f6 !important;
+    outline: none;
+    background: rgba(30, 41, 59, 0.8) !important;
 }
 
-/* 🏆 Winning Glow */
+/* 🏆 Winner Effects */
 .winner-glow {
     animation: pulse-gold 2s infinite;
+    border-color: #eab308 !important;
 }
 
 @keyframes pulse-gold {
@@ -81,16 +121,12 @@ body {
     100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
 }
 
-/* 📜 Custom Scrollbar for History */
+/* 📜 Custom Scrollbar */
 #history::-webkit-scrollbar {
-    width: 3px;
-}
-
-#history::-webkit-scrollbar-track {
-    background: transparent;
+    width: 4px;
 }
 
 #history::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: #334155;
     border-radius: 10px;
 }
