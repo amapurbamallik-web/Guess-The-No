@@ -3,18 +3,18 @@ let totalPlayers;
 let currentPlayer = 1;
 
 function startGame() {
-    totalPlayers = document.getElementById("players").value;
-    secretNumber = document.getElementById("secret").value;
+    totalPlayers = Number(document.getElementById("players").value);
+    secretNumber = Number(document.getElementById("secret").value);
 
     document.getElementById("setup").style.display = "none";
     document.getElementById("game").style.display = "block";
 
-    document.getElementById("turn").innerText = 
+    document.getElementById("turn").innerText =
         "Player " + currentPlayer + "'s Turn";
 }
 
 function checkGuess() {
-    let guess = document.getElementById("guess").value;
+    let guess = Number(document.getElementById("guess").value);
     let result = document.getElementById("result");
 
     if (guess > secretNumber) {
@@ -34,7 +34,7 @@ function checkGuess() {
         currentPlayer = 1;
     }
 
-    document.getElementById("turn").innerText = 
+    document.getElementById("turn").innerText =
         "Player " + currentPlayer + "'s Turn";
 
     document.getElementById("guess").value = "";
