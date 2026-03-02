@@ -11,6 +11,7 @@
         body { font-family: 'Inter', sans-serif; background-color: #050505; color: white; }
         .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .hidden { display: none; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
@@ -18,20 +19,32 @@
     <div class="w-full max-w-[380px] h-[750px] bg-[#0A0E14] rounded-[3rem] border-[8px] border-slate-900 flex flex-col overflow-hidden relative shadow-2xl">
         
         <div id="setup-screen" class="flex-1 flex flex-col justify-center px-8 space-y-6">
-            <h2 class="text-2xl font-black text-center mb-4">Join Game</h2>
+            <div class="text-center">
+                <h2 class="text-3xl font-black italic tracking-tighter text-blue-500">GUESS THE NO.</h2>
+                <p class="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Multiplayer Battle</p>
+            </div>
             
-            <div class="space-y-4">
-                <input id="user-name" type="text" placeholder="Your Name" class="w-full bg-slate-900 border border-slate-800 p-4 rounded-2xl focus:outline-none focus:border-blue-500">
-                <input id="user-secret" type="number" placeholder="Your Secret Number" class="w-full bg-slate-900 border border-slate-800 p-4 rounded-2xl focus:outline-none focus:border-blue-500">
-                <input id="target-id" type="text" placeholder="Friend's ID (Leave empty to Host)" class="w-full bg-slate-900 border border-slate-800 p-4 rounded-2xl focus:outline-none focus:border-blue-500">
+            <div class="space-y-3">
+                <input id="user-name" type="text" placeholder="Your Nickname" class="w-full bg-slate-900 border border-slate-800 p-4 rounded-2xl focus:outline-none focus:border-blue-500 transition-all">
+                <input id="user-secret" type="number" placeholder="Set Your Secret (1-100)" class="w-full bg-slate-900 border border-slate-800 p-4 rounded-2xl focus:outline-none focus:border-blue-500 transition-all">
             </div>
 
-            <button id="start-btn" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95">
-                START BATTLE
-            </button>
-            
-            <div id="my-id-display" class="text-[10px] text-center text-slate-500 uppercase tracking-widest font-bold pt-4">
-                Initializing Connection...
+            <div class="grid grid-cols-2 gap-3">
+                <button id="host-mode-btn" class="bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-bold text-xs uppercase transition-all">Host Game</button>
+                <button id="join-mode-btn" class="bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-bold text-xs uppercase transition-all">Join Game</button>
+            </div>
+
+            <div id="host-section" class="hidden space-y-4 pt-4 border-t border-white/5">
+                <div class="bg-black p-4 rounded-2xl border border-dashed border-slate-700">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase mb-2">Your Room ID</p>
+                    <div id="my-id-display" class="text-blue-400 font-mono font-bold break-all">Generating...</div>
+                </div>
+                <p class="text-[10px] text-center text-slate-500 italic">Waiting for opponent to connect...</p>
+            </div>
+
+            <div id="join-section" class="hidden space-y-4 pt-4 border-t border-white/5">
+                <input id="room-id-input" type="text" placeholder="Paste Room ID here" class="w-full bg-blue-900/20 border border-blue-500/30 p-4 rounded-2xl focus:outline-none focus:border-blue-500 text-blue-400 font-mono">
+                <button id="start-join-btn" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black transition-all shadow-lg active:scale-95">JOIN BATTLE</button>
             </div>
         </div>
 
@@ -40,9 +53,9 @@
                 <div class="flex justify-between items-center">
                     <div>
                         <p class="text-[10px] text-slate-500 font-bold uppercase">Opponent</p>
-                        <p id="opp-name-display" class="font-bold text-blue-400">Waiting...</p>
+                        <p id="opp-name-display" class="font-bold text-blue-400 italic">Connecting...</p>
                     </div>
-                    <div id="turn-badge" class="bg-blue-600/20 text-blue-500 px-3 py-1 rounded-full text-[10px] font-black uppercase">Your Turn</div>
+                    <div id="turn-badge" class="bg-slate-800 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter transition-colors">Waiting</div>
                 </div>
             </header>
 
@@ -50,103 +63,4 @@
                 </div>
 
             <footer class="p-6 bg-slate-950 border-t border-white/5">
-                <form id="guess-form" class="flex gap-2">
-                    <input id="guess-input" type="number" placeholder="Guess..." class="flex-1 bg-black border border-white/10 p-3 rounded-xl focus:outline-none">
-                    <button type="submit" class="bg-blue-600 px-6 rounded-xl font-bold">SEND</button>
-                </form>
-            </footer>
-        </div>
-    </div>
-
-    <script>
-        const peer = new Peer();
-        let conn;
-        let mySecret, oppSecret;
-        let myTurn = false;
-
-        // 1. Get Peer ID for Hosting
-        peer.on('open', (id) => {
-            document.getElementById('my-id-display').innerText = "YOUR ID: " + id;
-        });
-
-        // 2. "Start Battle" Logic
-        document.getElementById('start-btn').onclick = () => {
-            const name = document.getElementById('user-name').value;
-            mySecret = document.getElementById('user-secret').value;
-            const friendId = document.getElementById('target-id').value;
-
-            if (!name || !mySecret) return alert("Please fill all fields");
-
-            if (friendId) {
-                // Joining someone else
-                conn = peer.connect(friendId);
-                setupConnection(name);
-            } else {
-                // Waiting for someone to join me
-                alert("Waiting for friend to enter your ID...");
-                peer.on('connection', (c) => {
-                    conn = c;
-                    setupConnection(name);
-                });
-            }
-        };
-
-        function setupConnection(myName) {
-            conn.on('open', () => {
-                // Send name and secret to opponent immediately
-                conn.send({ type: 'init', name: myName, secret: mySecret });
-                
-                // Hide Join Screen, Show Game
-                document.getElementById('setup-screen').classList.add('hidden');
-                document.getElementById('game-screen').classList.remove('hidden');
-            });
-
-            conn.on('data', (data) => {
-                if (data.type === 'init') {
-                    document.getElementById('opp-name-display').innerText = data.name;
-                    oppSecret = data.secret;
-                    myTurn = !conn.peerInitiator; // Determine who goes first
-                    updateTurnUI();
-                } else if (data.type === 'guess') {
-                    addHistory(2, data.value);
-                    myTurn = true;
-                    updateTurnUI();
-                }
-            });
-        }
-
-        // 3. Game Actions
-        document.getElementById('guess-form').onsubmit = (e) => {
-            e.preventDefault();
-            if (!myTurn) return alert("Wait for your turn!");
-
-            const val = document.getElementById('guess-input').value;
-            addHistory(1, val);
-            conn.send({ type: 'guess', value: val });
-            
-            myTurn = false;
-            updateTurnUI();
-            document.getElementById('guess-input').value = '';
-        };
-
-        function addHistory(player, val) {
-            const target = (player === 1) ? oppSecret : mySecret;
-            let hint = "";
-            if (val == target) hint = "🏆 WINNER!";
-            else hint = val < target ? "Higher ↑" : "Lower ↓";
-
-            const div = document.createElement('div');
-            div.className = `p-3 rounded-xl max-w-[80%] ${player === 1 ? 'bg-blue-600 self-end ml-auto' : 'bg-slate-800'}`;
-            div.innerHTML = `<span class="text-xs opacity-50 block">${player === 1 ? 'You' : 'Opponent'}</span><b>${val}</b> — ${hint}`;
-            document.getElementById('history').appendChild(div);
-            document.getElementById('history').scrollTop = document.getElementById('history').scrollHeight;
-        }
-
-        function updateTurnUI() {
-            const badge = document.getElementById('turn-badge');
-            badge.innerText = myTurn ? "Your Turn" : "Opponent Thinking...";
-            badge.className = myTurn ? "bg-blue-600/20 text-blue-500 px-3 py-1 rounded-full text-[10px] font-black uppercase" : "bg-slate-800 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black uppercase";
-        }
-    </script>
-</body>
-</html>
+                <form id="guess-form" class="flex gap
