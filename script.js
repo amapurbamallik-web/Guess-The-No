@@ -1,153 +1,68 @@
-// 1. Initialize Firebase (Ensure your config is pasted here)
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    appId: "YOUR_APP_ID"
+// Initialize PeerJS - this gives the phone a unique ID
+const peer = new Peer(); 
+let conn; // The connection object
+let mySecret, oppSecret;
+let myTurn = false;
+
+// 1. When the phone connects to the Peer server, show the ID
+peer.on('open', (id) => {
+    console.log('My Peer ID is: ' + id);
+    document.getElementById('my-id-display').innerText = "Your ID: " + id;
+});
+
+// 2. Handle the "START BATTLE" click
+document.getElementById('start-btn').onclick = () => {
+    const name = document.getElementById('user-name').value;
+    mySecret = document.getElementById('user-secret').value;
+    const friendId = document.getElementById('target-id').value; // Peer ID of the other phone
+
+    if (!name || !mySecret) return alert("Fill in your name and secret number!");
+
+    if (friendId) {
+        // Player 2: Connecting to Player 1
+        conn = peer.connect(friendId);
+        setupGameEvents(name);
+    } else {
+        // Player 1: Waiting for Player 2 to join
+        alert("Waiting for opponent to enter your ID...");
+        peer.on('connection', (incomingConn) => {
+            conn = incomingConn;
+            setupGameEvents(name);
+        });
+    }
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-// 2. Global State
-let gameRef;
-let myPlayerNum = 0; // 0 = not joined, 1 = P1, 2 = P2
-let isMyTurn = false;
-let opponentSecret = null;
-
-// 3. Join Game Function
-async function joinGame() {
-    const roomID = document.getElementById('room-id').value.trim();
-    const secret = parseInt(document.getElementById('my-secret').value);
-
-    if (!roomID || isNaN(secret)) return alert("Enter Room Name & Secret!");
-
-    gameRef = db.ref('rooms/' + roomID);
-    
-    // Check if room exists
-    const snapshot = await gameRef.once('value');
-    const data = snapshot.val();
-
-    if (!data) {
-        // Create Room as Player 1
-        myPlayerNum = 1;
-        await gameRef.set({
-            p1_secret: secret,
-            p2_secret: null,
-            turn: 1,
-            history: [],
-            winner: null
-        });
-    } else if (!data.p2_secret) {
-        // Join Room as Player 2
-        myPlayerNum = 2;
-        await gameRef.update({ p2_secret: secret });
-    } else {
-        return alert("Room is full!");
-    }
-
-    // Hide setup, start listening
-    document.getElementById('setup-screen').classList.add('hidden');
-    initGameListener();
-}
-
-// 4. Real-time Sync Listener
-function initGameListener() {
-    gameRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (!data) return;
-
-        // Determine turn and opponent secret
-        isMyTurn = (data.turn === myPlayerNum);
-        opponentSecret = (myPlayerNum === 1) ? data.p2_secret : data.p1_secret;
-
-        // Update UI Status
-        updateUIStatus(data);
+// 3. Setup Data Listeners
+function setupGameEvents(myName) {
+    conn.on('open', () => {
+        // Send your info to the opponent
+        conn.send({ type: 'init', name: myName, secret: mySecret });
         
-        // Render History Loop
-        if (data.history) renderHistory(data.history);
+        // Transition UI from Join Screen to Game Screen
+        document.getElementById('setup-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+    });
 
-        // Check for Winner
-        if (data.winner) {
-            handleGameOver(data.winner);
+    conn.on('data', (data) => {
+        if (data.type === 'init') {
+            // Received opponent's name and secret
+            document.getElementById('opp-name').innerText = data.name;
+            oppSecret = data.secret;
+            // Player who didn't initiate the connection goes first (or vice versa)
+            myTurn = !conn.peerInitiator; 
+            updateTurnUI();
+        } else if (data.type === 'guess') {
+            // Opponent made a guess, show it in history
+            addHistoryEntry(2, data.value);
+            myTurn = true;
+            updateTurnUI();
         }
     });
 }
 
-// 5. Handling the Guess (The Loop)
-document.getElementById('guess-form').onsubmit = async (e) => {
+// 4. Handle Guessing
+document.getElementById('guess-form').onsubmit = (e) => {
     e.preventDefault();
-    const input = document.getElementById('guess-input');
-    const guessVal = parseInt(input.value);
+    if (!myTurn) return alert("It's not your turn!");
 
-    if (!isMyTurn || !opponentSecret || isNaN(guessVal)) return;
-
-    // Logic for Hint
-    let hint = "";
-    let won = false;
-
-    if (guessVal === opponentSecret) {
-        hint = "CORRECT!";
-        won = true;
-    } else {
-        hint = guessVal < opponentSecret ? "Higher ↑" : "Lower ↓";
-    }
-
-    // Update Firebase
-    const snap = await gameRef.once('value');
-    const currentHistory = snap.val().history || [];
-    
-    currentHistory.push({
-        p: myPlayerNum,
-        g: guessVal,
-        h: hint
-    });
-
-    const updates = {
-        history: currentHistory,
-        turn: (myPlayerNum === 1 ? 2 : 1)
-    };
-
-    if (won) updates.winner = myPlayerNum;
-
-    await gameRef.update(updates);
-    input.value = '';
-};
-
-// 6. UI Rendering Functions
-function renderHistory(list) {
-    const container = document.getElementById('history');
-    container.innerHTML = ''; // Clear and redraw to maintain "Not removed" rule
-
-    list.forEach(item => {
-        const div = document.createElement('div');
-        // If it's my guess, show on left (blue), if opponent, show on right (purple)
-        const isMe = item.p === myPlayerNum;
-        div.className = `flex w-full animate-pop ${isMe ? 'justify-start' : 'justify-end'}`;
-        
-        const bubbleClass = isMe ? 'p1-bubble' : 'p2-bubble';
-        
-        div.innerHTML = `
-            <div class="${bubbleClass} px-4 py-3 shadow-lg max-w-[85%]">
-                <div class="text-[9px] font-bold opacity-50 mb-1">PLAYER ${item.p}</div>
-                <div class="flex items-center gap-3">
-                    <span class="text-lg font-black">${item.g}</span>
-                    <div class="w-[1px] h-4 bg-white/20"></div>
-                    <span class="text-xs font-medium uppercase tracking-wider">${item.h}</span>
-                </div>
-            </div>
-        `;
-        container.appendChild(div);
-    });
-    container.scrollTop = container.scrollHeight;
-}
-
-function updateUIStatus(data) {
-    const status = document.getElementById('status');
-    if (!opponentSecret) {
-        status.innerText = "Waiting for Opponent...";
-    } else {
-        status.innerText = isMyTurn ? "● YOUR TURN" : "● OPPONENT'S TURN";
-        status.className = isMyTurn ? "text-blue-400 font-bold" : "text-slate-500";
-    }
-}
+    const guess = document.getElementById('guess-input').value;
