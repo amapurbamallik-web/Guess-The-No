@@ -1,2 +1,0 @@
-# Guess-The-No
-Game
