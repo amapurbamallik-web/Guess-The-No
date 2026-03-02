@@ -1,50 +1,93 @@
-/* GuessTheNo - Custom Stylesheet
-   Typography: Plus Jakarta Sans
-*/
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-
+/* Custom properties for easy color management */
 :root {
-    --p1-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); /* Blue */
-    --p2-gradient: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); /* Purple */
-    --bg-dark: #020617;
-    --card-dark: #0a0e14;
-    --border-slate: #1e293b;
+  --bg-dark: #05070A;
+  --card-bg: #0D1117;
+  --accent-p1: #3B82F6; /* Electric Blue */
+  --accent-p2: #A855F7; /* Neon Purple */
+  --text-main: #F8FAFC;
+  --text-dim: #94A3B8;
 }
 
 body {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    background-color: var(--bg-dark);
-    color: #f1f5f9;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    -webkit-tap-highlight-color: transparent;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
 }
 
-/* 📱 The Phone Frame Container */
+/* The Mobile Container (Your Screenshot Frame) */
 .phone-container {
-    background: var(--card-dark);
-    border: 8px solid var(--border-slate);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 
-                inset 0 0 20px rgba(255, 255, 255, 0.02);
-    width: 100%;
-    max-width: 380px;
-    height: 750px;
-    border-radius: 3rem;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+  width: 100%;
+  max-width: 380px;
+  height: 85vh;
+  background-color: var(--bg-dark);
+  border: 8px solid #1E293B;
+  border-radius: 3rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-/* 📋 Setup Tabs (Host/Join) */
-.tab-btn {
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    color: #64748b;
+/* Glassmorphism for inputs */
+input {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  transition: all 0.3s ease;
 }
 
-.tab-btn.active {
-    background: #1e29
+input:focus {
+  border-color: var(--accent-p1) !important;
+  background: rgba(59, 130, 246, 0.1) !important;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+}
+
+/* History Chat Bubbles */
+.bubble-me {
+  background: linear-gradient(135deg, #1D4ED8, #3B82F6);
+  border-radius: 20px 20px 4px 20px;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  align-self: flex-end;
+}
+
+.bubble-opp {
+  background: #1F2937;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px 20px 20px 4px;
+  align-self: flex-start;
+}
+
+/* Animations for new hints appearing */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-hint {
+  animation: slideUp 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* Winning State Glow */
+.winner-glow {
+  position: relative;
+}
+
+.winner-glow::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(45deg, #FFD700, #FFA500);
+  border-radius: inherit;
+  z-index: -1;
+  filter: blur(10px);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0
