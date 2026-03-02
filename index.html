@@ -3,187 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secret Cipher | Duel</title>
+    <title>Secret Cipher Online</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #020617;
-            color: white;
-            overflow: hidden;
-        }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .history-container::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .history-container::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 10px;
-        }
-
-        .p1-bubble {
-            background: linear-gradient(135deg, #1e40af, #1d4ed8);
-            border-radius: 20px 20px 20px 4px;
-        }
-
-        .p2-bubble {
-            background: linear-gradient(135deg, #7e22ce, #9333ea);
-            border-radius: 20px 20px 4px 20px;
-        }
-
-        @keyframes pop {
-            0% { transform: scale(0.9); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
+        body { font-family: 'Inter', sans-serif; background: #020617; color: white; overflow: hidden; }
+        .history-container::-webkit-scrollbar { width: 4px; }
+        .history-container::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .p1-bubble { background: linear-gradient(135deg, #1e40af, #1d4ed8); border-radius: 20px 20px 20px 4px; }
+        .p2-bubble { background: linear-gradient(135deg, #7e22ce, #9333ea); border-radius: 20px 20px 4px 20px; }
         .animate-pop { animation: pop 0.3s ease-out forwards; }
+        @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
 </head>
-<body class="flex items-center justify-center h-screen">
+<body class="flex items-center justify-center h-screen p-4">
 
-    <div class="relative w-[360px] h-[740px] bg-[#0A0E14] rounded-[3rem] border-[10px] border-[#1e293b] shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden">
+    <div class="relative w-full max-w-[360px] h-[740px] bg-[#0A0E14] rounded-[3rem] border-[10px] border-[#1e293b] shadow-2xl flex flex-col overflow-hidden">
         
-        <div class="h-10 w-full flex justify-between items-center px-8 pt-4 z-10">
-            <span class="text-[12px] font-bold">9:41</span>
-            <div class="w-24 h-6 bg-black rounded-full absolute left-1/2 -translate-x-1/2 top-3"></div>
-            <div class="flex gap-1.5 items-center">
-                <div class="w-4 h-2.5 bg-white/20 rounded-sm"></div>
-                <div class="w-5 h-2.5 bg-green-500 rounded-sm"></div>
-            </div>
-        </div>
-
-        <header class="px-6 py-6 border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-md">
-            <h1 class="text-xl font-black tracking-tighter text-white">SECRET CIPHER</h1>
-            <div id="turn-indicator" class="text-[10px] font-bold text-blue-400 mt-1 uppercase tracking-widest">
-                Player 1's Turn
-            </div>
+        <header class="px-6 py-8 border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-md mt-4">
+            <h1 class="text-xl font-black tracking-tighter">SECRET CIPHER <span class="text-green-500 text-[10px] ml-2">● LIVE</span></h1>
+            <div id="status" class="text-[10px] font-bold text-blue-400 mt-1 uppercase tracking-widest">Connecting to Server...</div>
         </header>
 
         <div id="history" class="history-container flex-1 overflow-y-auto p-4 space-y-4 flex flex-col">
-            <div class="text-center text-slate-600 text-xs my-10 uppercase tracking-widest font-bold">
-                Game Started
             </div>
+
+        <div id="setup-screen" class="absolute inset-0 bg-[#0A0E14] z-50 flex flex-col items-center justify-center p-8 text-center">
+            <h2 class="text-2xl font-bold mb-4">Join Game</h2>
+            <input id="room-id" type="text" placeholder="Enter Room Name" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-4 outline-none focus:border-blue-500">
+            <input id="my-secret" type="number" placeholder="Your Secret Number" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 outline-none focus:border-blue-500">
+            <button onclick="joinGame()" class="w-full bg-blue-600 p-4 rounded-xl font-bold hover:bg-blue-500 transition-all">START BATTLE</button>
         </div>
 
         <div class="p-6 bg-[#111827] border-t border-white/10">
-            <div id="win-message" class="hidden mb-4 p-3 bg-green-500/20 border border-green-500 rounded-xl text-green-500 text-center font-bold text-sm">
-                🎉 Target Cracked!
-            </div>
-
             <form id="guess-form" class="flex gap-2">
-                <input 
-                    type="number" 
-                    id="guess-input" 
-                    placeholder="Enter number..." 
-                    class="flex-1 bg-black border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all text-sm"
-                    required
-                >
-                <button 
-                    type="submit" 
-                    id="send-btn"
-                    class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-blue-900/20"
-                >
-                    GUESS
-                </button>
+                <input id="guess-input" type="number" placeholder="Guess..." class="flex-1 bg-black border border-white/10 rounded-2xl px-4 py-3 text-white outline-none focus:border-blue-500 text-sm">
+                <button type="submit" class="bg-blue-600 px-6 py-3 rounded-2xl font-bold shadow-lg">GO</button>
             </form>
-            
-            <div class="mt-4 flex justify-between items-center px-2">
-                <div class="text-[10px] text-slate-500 uppercase font-bold">P1 Secret: 3</div>
-                <div class="text-[10px] text-slate-500 uppercase font-bold">P2 Secret: 20</div>
-            </div>
         </div>
 
         <div class="h-1.5 w-32 bg-white/10 rounded-full mx-auto mb-2 shrink-0"></div>
     </div>
 
     <script>
-        const secrets = { 1: 3, 2: 20 };
+        // 1. REPLACE WITH YOUR FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let roomName = "";
+        let playerNum = 0; // 1 or 2
+        let mySecret = 0;
+        let opponentSecret = null;
         let currentTurn = 1;
-        let gameActive = true;
 
-        const form = document.getElementById('guess-form');
-        const input = document.getElementById('guess-input');
-        const history = document.getElementById('history');
-        const turnText = document.getElementById('turn-indicator');
-        const winMsg = document.getElementById('win-message');
-        const sendBtn = document.getElementById('send-btn');
-
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (!gameActive) return;
-
-            const guess = parseInt(input.value);
-            const target = (currentTurn === 1) ? secrets[2] : secrets[1];
+        // 2. JOIN LOGIC
+        function joinGame() {
+            roomName = document.getElementById('room-id').value || "default-room";
+            mySecret = parseInt(document.getElementById('my-secret').value);
             
-            let hintText = "";
-            let isWin = false;
+            const roomRef = db.ref('rooms/' + roomName);
 
-            if (guess === target) {
-                hintText = "Correct!";
-                isWin = true;
-            } else if (guess < target) {
-                hintText = "Higher ↑";
-            } else {
-                hintText = "Lower ↓";
-            }
-
-            addHistoryItem(currentTurn, guess, hintText, isWin);
-
-            if (isWin) {
-                endGame();
-            } else {
-                switchTurn();
-            }
-
-            input.value = '';
-            history.scrollTop = history.scrollHeight;
-        });
-
-        function addHistoryItem(player, guess, hint, isWin) {
-            const div = document.createElement('div');
-            div.className = `flex w-full animate-pop ${player === 1 ? 'justify-start' : 'justify-end'}`;
-            
-            const colorClass = player === 1 ? 'p1-bubble' : 'p2-bubble';
-            const winGlow = isWin ? 'ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]' : '';
-
-            div.innerHTML = `
-                <div class="${colorClass} ${winGlow} px-4 py-3 shadow-xl max-w-[80%]">
-                    <div class="text-[10px] opacity-60 font-bold uppercase mb-1">Player ${player}</div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-xl font-black">${guess}</span>
-                        <div class="w-[1px] h-4 bg-white/20"></div>
-                        <span class="text-xs font-bold tracking-wide">${hint}</span>
-                    </div>
-                </div>
-            `;
-            history.appendChild(div);
-        }
-
-        function switchTurn() {
-            currentTurn = (currentTurn === 1) ? 2 : 1;
-            turnText.innerText = `Player ${currentTurn}'s Turn`;
-            turnText.classList.toggle('text-blue-400');
-            turnText.classList.toggle('text-purple-400');
-            sendBtn.className = currentTurn === 1 
-                ? "bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl font-bold transition-all active:scale-95"
-                : "bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-2xl font-bold transition-all active:scale-95";
-        }
-
-        function endGame() {
-            gameActive = false;
-            winMsg.classList.remove('hidden');
-            turnText.innerText = `Game Over - Player ${currentTurn} Wins!`;
-            input.disabled = true;
-        }
-    </script>
-</body>
-</html>
+            roomRef.once('value', (snapshot) => {
+                if (!snapshot.exists()) {
+                    playerNum = 1;
+                    roomRef.set({ p1_secret: mySecret, turn: 1, history: [] });
+                } else {
+                    playerNum =
