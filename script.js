@@ -1,41 +1,44 @@
-let secretNumber;
-let totalPlayers;
-let currentPlayer = 1;
+const io = require("socket.io")(3000, {
+  cors: { origin: "*" }
+});
 
-function startGame() {
-    totalPlayers = Number(document.getElementById("players").value);
-    secretNumber = Number(document.getElementById("secret").value);
+let rooms = {}; // Stores { roomID: { p1: {id, secret}, p2: {id, secret}, turn: id } }
 
-    document.getElementById("setup").style.display = "none";
-    document.getElementById("game").style.display = "block";
+io.on("connection", (socket) => {
+  console.log("User Connected:", socket.id);
 
-    document.getElementById("turn").innerText =
-        "Player " + currentPlayer + "'s Turn";
-}
-
-function checkGuess() {
-    let guess = Number(document.getElementById("guess").value);
-    let result = document.getElementById("result");
-
-    if (guess > secretNumber) {
-        result.innerText = "⬇ Lower!";
+  // 1. Join a Room
+  socket.on("join-game", (roomID, secret) => {
+    socket.join(roomID);
+    
+    if (!rooms[roomID]) {
+      rooms[roomID] = { p1: { id: socket.id, secret }, turn: socket.id };
+      socket.emit("message", "Waiting for opponent...");
+    } else {
+      rooms[roomID].p2 = { id: socket.id, secret };
+      io.to(roomID).emit("game-start", { firstTurn: rooms[roomID].p1.id });
     }
-    else if (guess < secretNumber) {
-        result.innerText = "⬆ Higher!";
-    }
-    else {
-        result.innerText = "🎉 Player " + currentPlayer + " Wins!";
-        return;
-    }
+  });
 
-    currentPlayer++;
+  // 2. Handle Guesses
+  socket.on("send-guess", (roomID, guess) => {
+    const room = rooms[roomID];
+    const isP1 = socket.id === room.p1.id;
+    const opponentSecret = isP1 ? room.p2.secret : room.p1.secret;
+    
+    let result = "";
+    if (guess == opponentSecret) result = "win";
+    else result = guess < opponentSecret ? "higher" : "lower";
 
-    if (currentPlayer > totalPlayers) {
-        currentPlayer = 1;
-    }
+    // Broadcast the result to BOTH players
+    io.to(roomID).emit("receive-hint", {
+      player: isP1 ? 1 : 2,
+      guess: guess,
+      hint: result
+    });
 
-    document.getElementById("turn").innerText =
-        "Player " + currentPlayer + "'s Turn";
-
-    document.getElementById("guess").value = "";
-}
+    // Switch Turns
+    room.turn = isP1 ? room.p2.id : room.p1.id;
+    io.to(roomID).emit("turn-change", room.turn);
+  });
+});
