@@ -3,81 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secret Cipher Online</title>
+    <title>GuessTheNo - Online</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #020617; color: white; overflow: hidden; }
-        .history-container::-webkit-scrollbar { width: 4px; }
-        .history-container::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        .p1-bubble { background: linear-gradient(135deg, #1e40af, #1d4ed8); border-radius: 20px 20px 20px 4px; }
-        .p2-bubble { background: linear-gradient(135deg, #7e22ce, #9333ea); border-radius: 20px 20px 4px 20px; }
-        .animate-pop { animation: pop 0.3s ease-out forwards; }
-        @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        body { font-family: 'Inter', sans-serif; background-color: #050505; color: white; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .hidden { display: none; }
     </style>
 </head>
-<body class="flex items-center justify-center h-screen p-4">
+<body class="flex items-center justify-center min-h-screen p-4">
 
-    <div class="relative w-full max-w-[360px] h-[740px] bg-[#0A0E14] rounded-[3rem] border-[10px] border-[#1e293b] shadow-2xl flex flex-col overflow-hidden">
+    <div class="w-full max-w-[380px] h-[750px] bg-[#0A0E14] rounded-[3rem] border-[8px] border-slate-900 flex flex-col overflow-hidden relative shadow-2xl">
         
-        <header class="px-6 py-8 border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-md mt-4">
-            <h1 class="text-xl font-black tracking-tighter">SECRET CIPHER <span class="text-green-500 text-[10px] ml-2">● LIVE</span></h1>
-            <div id="status" class="text-[10px] font-bold text-blue-400 mt-1 uppercase tracking-widest">Connecting to Server...</div>
-        </header>
-
-        <div id="history" class="history-container flex-1 overflow-y-auto p-4 space-y-4 flex flex-col">
+        <div id="setup-screen" class="flex-1 flex flex-col justify-center px-8 space-y-6">
+            <h2 class="text-2xl font-black text-center mb-4">Join Game</h2>
+            
+            <div class="space-y-4">
+                <input id="user-name" type="text" placeholder="Your Name" class="w-full bg-slate-900 border border-slate-800 p-4 rounded-2xl focus:outline-none focus:border-blue-500">
+                <input id="user-secret" type="number" placeholder="Your Secret Number" class="w-full bg-slate-900 border border-slate-800 p-4 rounded-2xl focus:outline-none focus:border-blue-500">
+                <input id="target-id" type="text" placeholder="Friend's ID (Leave empty to Host)" class="w-full bg-slate-900 border border-slate-800 p-4 rounded-2xl focus:outline-none focus:border-blue-500">
             </div>
 
-        <div id="setup-screen" class="absolute inset-0 bg-[#0A0E14] z-50 flex flex-col items-center justify-center p-8 text-center">
-            <h2 class="text-2xl font-bold mb-4">Join Game</h2>
-            <input id="room-id" type="text" placeholder="Enter Room Name" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-4 outline-none focus:border-blue-500">
-            <input id="my-secret" type="number" placeholder="Your Secret Number" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 outline-none focus:border-blue-500">
-            <button onclick="joinGame()" class="w-full bg-blue-600 p-4 rounded-xl font-bold hover:bg-blue-500 transition-all">START BATTLE</button>
+            <button id="start-btn" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95">
+                START BATTLE
+            </button>
+            
+            <div id="my-id-display" class="text-[10px] text-center text-slate-500 uppercase tracking-widest font-bold pt-4">
+                Initializing Connection...
+            </div>
         </div>
 
-        <div class="p-6 bg-[#111827] border-t border-white/10">
-            <form id="guess-form" class="flex gap-2">
-                <input id="guess-input" type="number" placeholder="Guess..." class="flex-1 bg-black border border-white/10 rounded-2xl px-4 py-3 text-white outline-none focus:border-blue-500 text-sm">
-                <button type="submit" class="bg-blue-600 px-6 py-3 rounded-2xl font-bold shadow-lg">GO</button>
-            </form>
-        </div>
+        <div id="game-screen" class="hidden flex-1 flex flex-col">
+            <header class="p-6 border-b border-white/5 bg-slate-900/50">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase">Opponent</p>
+                        <p id="opp-name-display" class="font-bold text-blue-400">Waiting...</p>
+                    </div>
+                    <div id="turn-badge" class="bg-blue-600/20 text-blue-500 px-3 py-1 rounded-full text-[10px] font-black uppercase">Your Turn</div>
+                </div>
+            </header>
 
-        <div class="h-1.5 w-32 bg-white/10 rounded-full mx-auto mb-2 shrink-0"></div>
+            <div id="history" class="flex-1 overflow-y-auto p-4 space-y-3">
+                </div>
+
+            <footer class="p-6 bg-slate-950 border-t border-white/5">
+                <form id="guess-form" class="flex gap-2">
+                    <input id="guess-input" type="number" placeholder="Guess..." class="flex-1 bg-black border border-white/10 p-3 rounded-xl focus:outline-none">
+                    <button type="submit" class="bg-blue-600 px-6 rounded-xl font-bold">SEND</button>
+                </form>
+            </footer>
+        </div>
     </div>
 
     <script>
-        // 1. REPLACE WITH YOUR FIREBASE CONFIG
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT.firebaseapp.com",
-            databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+        const peer = new Peer();
+        let conn;
+        let mySecret, oppSecret;
+        let myTurn = false;
+
+        // 1. Get Peer ID for Hosting
+        peer.on('open', (id) => {
+            document.getElementById('my-id-display').innerText = "YOUR ID: " + id;
+        });
+
+        // 2. "Start Battle" Logic
+        document.getElementById('start-btn').onclick = () => {
+            const name = document.getElementById('user-name').value;
+            mySecret = document.getElementById('user-secret').value;
+            const friendId = document.getElementById('target-id').value;
+
+            if (!name || !mySecret) return alert("Please fill all fields");
+
+            if (friendId) {
+                // Joining someone else
+                conn = peer.connect(friendId);
+                setupConnection(name);
+            } else {
+                // Waiting for someone to join me
+                alert("Waiting for friend to enter your ID...");
+                peer.on('connection', (c) => {
+                    conn = c;
+                    setupConnection(name);
+                });
+            }
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        function setupConnection(myName) {
+            conn.on('open', () => {
+                // Send name and secret to opponent immediately
+                conn.send({ type: 'init', name: myName, secret: mySecret });
+                
+                // Hide Join Screen, Show Game
+                document.getElementById('setup-screen').classList.add('hidden');
+                document.getElementById('game-screen').classList.remove('hidden');
+            });
 
-        let roomName = "";
-        let playerNum = 0; // 1 or 2
-        let mySecret = 0;
-        let opponentSecret = null;
-        let currentTurn = 1;
+            conn.on('data', (data) => {
+                if (data.type === 'init') {
+                    document.getElementById('opp-name-display').innerText = data.name;
+                    oppSecret = data.secret;
+                    myTurn = !conn.peerInitiator; // Determine who goes first
+                    updateTurnUI();
+                } else if (data.type === 'guess') {
+                    addHistory(2, data.value);
+                    myTurn = true;
+                    updateTurnUI();
+                }
+            });
+        }
 
-        // 2. JOIN LOGIC
-        function joinGame() {
-            roomName = document.getElementById('room-id').value || "default-room";
-            mySecret = parseInt(document.getElementById('my-secret').value);
+        // 3. Game Actions
+        document.getElementById('guess-form').onsubmit = (e) => {
+            e.preventDefault();
+            if (!myTurn) return alert("Wait for your turn!");
+
+            const val = document.getElementById('guess-input').value;
+            addHistory(1, val);
+            conn.send({ type: 'guess', value: val });
             
-            const roomRef = db.ref('rooms/' + roomName);
+            myTurn = false;
+            updateTurnUI();
+            document.getElementById('guess-input').value = '';
+        };
 
-            roomRef.once('value', (snapshot) => {
-                if (!snapshot.exists()) {
-                    playerNum = 1;
-                    roomRef.set({ p1_secret: mySecret, turn: 1, history: [] });
-                } else {
-                    playerNum =
+        function addHistory(player, val) {
+            const target = (player === 1) ? oppSecret : mySecret;
+            let hint = "";
+            if (val == target) hint = "🏆 WINNER!";
+            else hint = val < target ? "Higher ↑" : "Lower ↓";
+
+            const div = document.createElement('div');
+            div.className = `p-3 rounded-xl max-w-[80%] ${player === 1 ? 'bg-blue-600 self-end ml-auto' : 'bg-slate-800'}`;
+            div.innerHTML = `<span class="text-xs opacity-50 block">${player === 1 ? 'You' : 'Opponent'}</span><b>${val}</b> — ${hint}`;
+            document.getElementById('history').appendChild(div);
+            document.getElementById('history').scrollTop = document.getElementById('history').scrollHeight;
+        }
+
+        function updateTurnUI() {
+            const badge = document.getElementById('turn-badge');
+            badge.innerText = myTurn ? "Your Turn" : "Opponent Thinking...";
+            badge.className = myTurn ? "bg-blue-600/20 text-blue-500 px-3 py-1 rounded-full text-[10px] font-black uppercase" : "bg-slate-800 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black uppercase";
+        }
+    </script>
+</body>
+</html>
