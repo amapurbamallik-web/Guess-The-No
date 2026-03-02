@@ -1,142 +1,96 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Shield, ChevronUp, ChevronDown, CheckCircle2 } from 'lucide-react';
+/* Custom Styles to supplement Tailwind */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
 
-const SecretCipher = () => {
-  // Game State
-  const [p1Secret] = useState(3);
-  const [p2Secret] = useState(20);
-  const [currentGuess, setCurrentGuess] = useState('');
-  const [history, setHistory] = useState([]); // { player: 1|2, guess: num, hint: 'higher'|'lower'|'win' }
-  const [turn, setTurn] = useState(1); // 1 or 2
-  const [winner, setWinner] = useState(null);
-  
-  const scrollRef = useRef(null);
+:root {
+    --p1-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    --p2-gradient: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
+    --bg-dark: #0f172a;
+    --card-dark: #1e293b;
+}
 
-  // Auto-scroll to latest hint
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [history]);
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #020617;
+    color: #f1f5f9;
+    -webkit-tap-highlight-color: transparent;
+}
 
-  const handleGuess = (e) => {
-    e.preventDefault();
-    const guessNum = parseInt(currentGuess);
-    if (isNaN(guessNum) || winner) return;
+/* 📱 The "Glass" Phone Frame */
+.phone-container {
+    background: #0a0e14;
+    border: 8px solid #1e293b;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 
+                inset 0 0 20px rgba(255, 255, 255, 0.02);
+    position: relative;
+    overflow: hidden;
+}
 
-    let hint = '';
-    const target = turn === 1 ? p2Secret : p1Secret;
+/* 💬 Hint Bubbles */
+.bubble {
+    position: relative;
+    max-width: 85%;
+    padding: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-    if (guessNum === target) hint = 'win';
-    else if (guessNum < target) hint = 'higher';
-    else hint = 'lower';
+.p1-bubble {
+    background: var(--p1-gradient);
+    border-radius: 20px 20px 20px 4px;
+    align-self: flex-start;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
 
-    const newEntry = { player: turn, guess: guessNum, hint };
-    setHistory([...history, newEntry]);
-    
-    if (hint === 'win') {
-      setWinner(turn);
-    } else {
-      setTurn(turn === 1 ? 2 : 1);
-      setCurrentGuess('');
-    }
-  };
+.p2-bubble {
+    background: var(--p2-gradient);
+    border-radius: 20px 20px 4px 20px;
+    align-self: flex-end;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
 
-  return (
-    <div className="flex justify-center items-center h-screen bg-slate-950 font-sans p-4">
-      {/* Mobile Frame */}
-      <div className="w-full max-w-md h-[800px] bg-[#0A0E14] rounded-[3rem] border-[8px] border-slate-800 shadow-2xl flex flex-col overflow-hidden relative">
-        
-        {/* Status Bar */}
-        <div className="h-10 w-full flex justify-between items-center px-8 pt-4">
-          <span className="text-white text-xs font-bold">9:41</span>
-          <div className="w-20 h-5 bg-black rounded-full"></div>
-          <div className="flex gap-1">
-            <div className="w-3 h-3 rounded-full bg-white/20"></div>
-            <div className="w-3 h-3 rounded-full bg-white/20"></div>
-          </div>
-        </div>
+/* ⚡ Dynamic Animations */
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
 
-        {/* Header / Opponent Info */}
-        <header className="p-6 flex items-center justify-between border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center ${turn === 2 ? 'border-purple-500 shadow-[0_0_10px_purple]' : 'border-slate-700'}`}>
-              <span className="text-lg">👤</span>
-            </div>
-            <div>
-              <p className="text-white font-bold text-sm">Player 2 (Opponent)</p>
-              <p className="text-green-500 text-[10px] flex items-center gap-1">● Online</p>
-            </div>
-          </div>
-          <Shield className="text-slate-500 w-5 h-5" />
-        </header>
+.animate-hint {
+    animation: slideIn 0.4s ease-out forwards;
+}
 
-        {/* Game Area / History */}
-        <main ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
-          {history.length === 0 && (
-            <div className="text-center mt-20 text-slate-500 text-sm animate-pulse">
-              Game Started. Break their secret!
-            </div>
-          )}
-          
-          {history.map((item, index) => (
-            <div key={index} className={`flex w-full ${item.player === 1 ? 'justify-start' : 'justify-end'}`}>
-              <div className={`max-w-[80%] p-3 rounded-2xl flex items-center gap-3 ${
-                item.player === 1 ? 'bg-blue-600/20 border border-blue-500 text-blue-100' : 'bg-purple-600/20 border border-purple-500 text-purple-100'
-              }`}>
-                <span className="font-bold text-lg">{item.guess}</span>
-                <div className="h-4 w-[1px] bg-white/20"></div>
-                <div className="text-xs flex items-center gap-1 uppercase tracking-widest font-bold">
-                  {item.hint === 'higher' && <><ChevronUp size={14} /> Higher</>}
-                  {item.hint === 'lower' && <><ChevronDown size={14} /> Lower</>}
-                  {item.hint === 'win' && <><CheckCircle2 size={14} className="text-green-400" /> CRACKED!</>}
-                </div>
-              </div>
-            </div>
-          ))}
-          
-          {winner && (
-            <div className="bg-yellow-500/10 border border-yellow-500 p-4 rounded-xl text-center text-yellow-500 font-black animate-bounce">
-              🏆 PLAYER {winner} WINS!
-            </div>
-          )}
-        </main>
+/* 🎯 Interaction Effects */
+.input-field {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+}
 
-        {/* Input Area */}
-        <footer className="p-6 bg-[#161B22] border-t border-white/5">
-          <div className="mb-4 flex justify-between text-[10px] text-slate-400 uppercase font-bold tracking-tighter">
-            <span>Your Secret: <span className="text-blue-400">{p1Secret}</span></span>
-            <span className={turn === 1 ? "text-blue-400" : "text-slate-600"}>
-              {turn === 1 ? "● YOUR TURN" : "WAITING FOR P2..."}
-            </span>
-          </div>
-          
-          <form onSubmit={handleGuess} className="flex gap-2">
-            <input 
-              type="number"
-              disabled={turn !== 1 || winner}
-              value={currentGuess}
-              onChange={(e) => setCurrentGuess(e.target.value)}
-              placeholder="Enter guess..."
-              className="flex-1 bg-black border border-white/10 rounded-xl px-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
-            />
-            <button 
-              type="submit"
-              disabled={turn !== 1 || winner}
-              className={`px-6 py-3 rounded-xl font-bold transition-all ${
-                turn === 1 ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800 text-slate-500'
-              }`}
-            >
-              SEND
-            </button>
-          </form>
-        </main>
+.input-field:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
 
-        {/* Home Indicator */}
-        <div className="h-1 w-32 bg-white/20 rounded-full mx-auto mb-2"></div>
-      </div>
-    </div>
-  );
-};
+/* 🏆 Winning Glow */
+.winner-glow {
+    animation: pulse-gold 2s infinite;
+}
 
-export default SecretCipher;
+@keyframes pulse-gold {
+    0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4); }
+    70% { box-shadow: 0 0 0 20px rgba(234, 179, 8, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+}
+
+/* 📜 Custom Scrollbar for History */
+#history::-webkit-scrollbar {
+    width: 3px;
+}
+
+#history::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#history::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
