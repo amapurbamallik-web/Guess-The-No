@@ -3,66 +3,89 @@ const peer = new Peer();
 let conn; // The connection object
 let mySecret, oppSecret;
 let myTurn = false;
+let myName = "";
 
-// 1. When the phone connects to the Peer server, show the ID
+// 1. Peer Server Connection: Show the ID for the "Host" section
 peer.on('open', (id) => {
     console.log('My Peer ID is: ' + id);
-    document.getElementById('my-id-display').innerText = "Your ID: " + id;
+    const idDisplay = document.getElementById('my-id-display');
+    if(idDisplay) idDisplay.innerText = id;
 });
 
-// 2. Handle the "START BATTLE" click
-document.getElementById('start-btn').onclick = () => {
-    const name = document.getElementById('user-name').value;
-    mySecret = document.getElementById('user-secret').value;
-    const friendId = document.getElementById('target-id').value; // Peer ID of the other phone
+// 2. HOST LOGIC: Always listen for someone trying to join your room
+peer.on('connection', (incomingConn) => {
+    if (conn) return; // Prevent multiple people from joining one session
+    
+    conn = incomingConn;
+    myTurn = true; // Host typically goes first
+    setupGameEvents();
+});
 
-    if (!name || !mySecret) return alert("Fill in your name and secret number!");
-
-    if (friendId) {
-        // Player 2: Connecting to Player 1
-        conn = peer.connect(friendId);
-        setupGameEvents(name);
-    } else {
-        // Player 1: Waiting for Player 2 to join
-        alert("Waiting for opponent to enter your ID...");
-        peer.on('connection', (incomingConn) => {
-            conn = incomingConn;
-            setupGameEvents(name);
-        });
-    }
+// 3. JOIN LOGIC: Triggered when the user clicks "JOIN BATTLE"
+document.getElementById('start-join-btn').onclick = () => {
+    const targetRoomId = document.getElementById('room-id-input').value;
+    
+    if (!targetRoomId) return alert("Please enter a Room ID!");
+    
+    conn = peer.connect(targetRoomId);
+    myTurn = false; // Joiner goes second
+    setupGameEvents();
 };
 
-// 3. Setup Data Listeners
-function setupGameEvents(myName) {
+// 4. Setup Data Listeners & UI Transition
+function setupGameEvents() {
+    // Get latest values from inputs
+    myName = document.getElementById('user-name').value || "Player";
+    mySecret = document.getElementById('user-secret').value;
+
+    if (!mySecret) {
+        alert("Please enter your secret number before connecting!");
+        return;
+    }
+
+    // When the P2P connection is fully established
     conn.on('open', () => {
         // Send your info to the opponent
         conn.send({ type: 'init', name: myName, secret: mySecret });
         
-        // Transition UI from Join Screen to Game Screen
+        // Transition UI
         document.getElementById('setup-screen').classList.add('hidden');
         document.getElementById('game-screen').classList.remove('hidden');
+        updateTurnUI();
     });
 
+    // Handle incoming messages
     conn.on('data', (data) => {
         if (data.type === 'init') {
-            // Received opponent's name and secret
-            document.getElementById('opp-name').innerText = data.name;
+            // Received opponent's details
+            document.getElementById('opp-name-display').innerText = data.name;
             oppSecret = data.secret;
-            // Player who didn't initiate the connection goes first (or vice versa)
-            myTurn = !conn.peerInitiator; 
             updateTurnUI();
         } else if (data.type === 'guess') {
-            // Opponent made a guess, show it in history
+            // Opponent made a guess (Player 2 in history)
             addHistoryEntry(2, data.value);
             myTurn = true;
             updateTurnUI();
         }
     });
+    
+    conn.on('close', () => {
+        alert("Opponent left the game.");
+        location.reload();
+    });
 }
 
-// 4. Handle Guessing
+// 5. Handle Guessing
 document.getElementById('guess-form').onsubmit = (e) => {
     e.preventDefault();
-    if (!myTurn) return alert("It's not your turn!");
+    const input = document.getElementById('guess-input');
+    const guessValue = input.value;
 
-    const guess = document.getElementById('guess-input').value;
+    if (!myTurn) return alert("Wait for your turn!");
+    if (!guessValue) return;
+
+    // Add to history (Player 1 is "Me")
+    addHistoryEntry(1, guessValue);
+    
+    // Send guess to opponent
+    conn.send({ type: 'guess', value: guessValue });
